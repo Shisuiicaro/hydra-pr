@@ -1,5 +1,3 @@
-import axios from "axios";
-
 export class FichierApi {
   /**
    * Get the download URL for a 1fichier link
