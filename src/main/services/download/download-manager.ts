@@ -408,7 +408,7 @@ export class DownloadManager {
       }
       case Downloader.Fichier: {
         const downloadUrl = await FichierApi.getDownloadUrl(download.uri);
-        
+
         return {
           action: "start",
           game_id: downloadId,
