@@ -8,6 +8,7 @@ import {
   DatanodesApi,
   MediafireApi,
   PixelDrainApi,
+  FichierApi,
 } from "../hosters";
 import { PythonRPC } from "../python-rpc";
 import {
@@ -397,6 +398,17 @@ export class DownloadManager {
 
         if (!downloadUrl) throw new Error(DownloadError.NotCachedOnHydra);
 
+        return {
+          action: "start",
+          game_id: downloadId,
+          url: downloadUrl,
+          save_path: download.downloadPath,
+          allow_multiple_connections: true,
+        };
+      }
+      case Downloader.Fichier: {
+        const downloadUrl = await FichierApi.getDownloadUrl(download.uri);
+        
         return {
           action: "start",
           game_id: downloadId,

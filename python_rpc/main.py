@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify
 import sys, json, urllib.parse, psutil
 from torrent_downloader import TorrentDownloader
 from http_downloader import HttpDownloader
+from fichier_downloader import FichierDownloader
 from profile_image_processor import ProfileImageProcessor
 import libtorrent as lt
 
@@ -23,7 +24,7 @@ torrent_session = lt.session({'listen_interfaces': '0.0.0.0:{port}'.format(port=
 if start_download_payload:
     initial_download = json.loads(urllib.parse.unquote(start_download_payload))
     downloading_game_id = initial_download['game_id']
-    
+
     if initial_download['url'].startswith('magnet'):
         torrent_downloader = TorrentDownloader(torrent_session)
         downloads[initial_download['game_id']] = torrent_downloader
@@ -31,6 +32,13 @@ if start_download_payload:
             torrent_downloader.start_download(initial_download['url'], initial_download['save_path'])
         except Exception as e:
             print("Error starting torrent download", e)
+    elif '1fichier.com' in initial_download['url']:
+        fichier_downloader = FichierDownloader()
+        downloads[initial_download['game_id']] = fichier_downloader
+        try:
+            fichier_downloader.start_download(initial_download['url'], initial_download['save_path'], initial_download.get('header'), initial_download.get('out'))
+        except Exception as e:
+            print("Error starting 1fichier download", e)
     else:
         http_downloader = HttpDownloader()
         downloads[initial_download['game_id']] = http_downloader
@@ -73,17 +81,17 @@ def seed_status():
     auth_error = validate_rpc_password()
     if auth_error:
         return auth_error
-    
+
     seed_status = []
 
     for game_id, downloader in downloads.items():
         if not downloader:
             continue
-        
+
         response = downloader.get_download_status()
         if response is None:
             continue
-        
+
         if response.get('status') == 5:
             seed_status.append({
                 'gameId': game_id,
@@ -145,6 +153,13 @@ def action():
                 torrent_downloader = TorrentDownloader(torrent_session)
                 downloads[game_id] = torrent_downloader
                 torrent_downloader.start_download(url, data['save_path'])
+        elif '1fichier.com' in url:
+            if existing_downloader and isinstance(existing_downloader, FichierDownloader):
+                existing_downloader.start_download(url, data['save_path'], data.get('header'), data.get('out'))
+            else:
+                fichier_downloader = FichierDownloader()
+                downloads[game_id] = fichier_downloader
+                fichier_downloader.start_download(url, data['save_path'], data.get('header'), data.get('out'))
         else:
             if existing_downloader and isinstance(existing_downloader, HttpDownloader):
                 existing_downloader.start_download(url, data['save_path'], data.get('header'), data.get('out'))
@@ -152,14 +167,14 @@ def action():
                 http_downloader = HttpDownloader()
                 downloads[game_id] = http_downloader
                 http_downloader.start_download(url, data['save_path'], data.get('header'), data.get('out'))
-        
+
         downloading_game_id = game_id
 
     elif action == 'pause':
         downloader = downloads.get(game_id)
         if downloader:
             downloader.pause_download()
-        
+
         if downloading_game_id == game_id:
             downloading_game_id = -1
     elif action == 'cancel':
